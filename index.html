@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <title>NovelAI metadata Viewer</title>
+</head>
+
+<body>
+<nav class="navbar is-primary" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+            <span class="navbar-item">
+                <p class="title">NovelAI metadata Viewer v1.0.0</p>
+            </span>
+    </div>
+    <div class="navbar-end">
+        <div class="navbar-item">
+            <div class="buttons">
+                <a class="button is-light" href="https://github.com/rassi0429/novelai-metadata-viewer">
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+<div id="app" @dragover.prevent  @drop.prevent="onFileChange">
+    <div class="container is-max-desktop" >
+        <div class="section">
+            <p>This tool does NOT upload images to the server. It runs in your browser.</p>
+            <div class="file is-boxed" >
+                <label class="file-label">
+                    <input class="file-input" type="file" name="resume" accept=".png" @change="onFileChange">
+                    <span class="file-cta">
+              <span class="file-label">
+                Choose a file or drop image
+              </span>
+            </span>
+                </label>
+            </div>
+            <div class="columns">
+                <div class="column" v-if="hasMetadata">
+                    <div class="field">
+                        <label class="label">Prompts</label>
+                        <div class="tags">
+                            <span class="tag is-black" v-for="(prompt, index) in prompts" :key="index">{{prompt}}</span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Raw Prompts</label>
+                        <div class="control">
+                            <input class="input" type="text" placeholder="raw prompts" readonly :value="rawPrompts">
+                        </div>
+                    </div>
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Steps</label>
+                                <div class="control">
+                                    <input class="input" type="text" placeholder="Text input" readonly :value="steps">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Noise</label>
+                                <div class="control">
+                                    <input class="input" type="text" placeholder="Text input" readonly :value="noise">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Scale</label>
+                                <div class="control">
+                                    <input class="input" type="text" placeholder="Text input" readonly :value="scale">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Strength</label>
+                                <div class="control">
+                                    <input class="input" type="text" placeholder="Text input" readonly
+                                           :value="strength">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Seed</label>
+                        <div class="control">
+                            <input class="input" type="text" placeholder="Text input" readonly :value="seed">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">uc</label>
+                        <div class="control">
+                            <input class="input" type="text" placeholder="image uc" readonly :value="uc">
+                        </div>
+                    </div>
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Software</label>
+                                <div class="control">
+                                    <input class="input" type="text" placeholder="Image software" readonly
+                                           :value="software">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column">
+                            <div class="field">
+                                <label class="label">Source</label>
+                                <div class="control">
+                                    <input class="input" type="text" placeholder="image source" readonly
+                                           :value="source">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Sampler</label>
+                        <div class="control">
+                            <input class="input" type="text" placeholder="Image sampler" readonly :value="sampler">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Title</label>
+                        <div class="control">
+                            <input class="input" type="text" placeholder="Image title" readonly :value="title">
+                        </div>
+                    </div>
+                </div>
+                <div class="column" v-if="!hasMetadata">
+                    <p class="subtitle">This image doesn't seem to have Metadata!</p>
+                </div>
+                <div class="column">
+                    <img id="preview" v-if="preview" :src="preview">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<footer class="footer">
+    <div class="content has-text-centered ">
+        <p>
+            This tool is not related to NovelAI<br>
+            <a href="https://github.com/rassi0429/novelai-metadata-viewer">GitHub (welcome PR,issues)</a>
+            The website content is licensed Apache 2.0 License.
+        </p>
+    </div>
+</footer>
+<script>
+  var app = new Vue({
+    el: '#app',
+    data: {
+      preview: null,
+      hasMetadata: true,
+      prompts: [],
+      rawPrompts: "",
+      steps: 0,
+      sampler: "",
+      seed: 0,
+      strength: 0,
+      noise: 0,
+      scale: 0,
+      uc: [],
+      software: "",
+      source: "",
+      title: ""
+    },
+    methods: {
+      onFileChange: async function (e) {
+        const files = e.target.files || e.dataTransfer.files;
+        const fileArray = Array.from(files)
+        const metadata = await this.getMetadata(fileArray[0])
+        this.preview = URL.createObjectURL(fileArray[0])
+        if (metadata.tEXt) {
+          this.hasMetadata = true
+          this.prompts = metadata.tEXt.Description.split(",").map(t => t.trim()).filter(t => t.length !== 0)
+          this.rawPrompts = metadata.tEXt.Description
+          const _metadata = JSON.parse(metadata.tEXt.Comment)
+          this.steps = _metadata.steps
+          this.sampler = _metadata.sampler
+          this.seed = _metadata.seed
+          this.strength = _metadata.strength
+          this.noise = _metadata.noise
+          this.scale = _metadata.scale
+          this.uc = _metadata.uc
+          this.software = metadata.tEXt.Software
+          this.source = metadata.tEXt.Source
+          this.title = metadata.tEXt.Title
+          console.log(metadata.tEXt)
+        } else {
+          this.hasMetadata = false
+        }
+      },
+      getMetadata: function (file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsArrayBuffer(file);
+          reader.onload = () => {
+            const metadata = this.readMetadata(reader.result)
+            resolve(metadata)
+          };
+        })
+      },
+      readMetadata: function (buffer) {
+        const result = {};
+        const chunks = this.extractChunks(buffer);
+        chunks.forEach(chunk => {
+          switch (chunk.name) {
+            case 'tEXt':
+              if (!result.tEXt) {
+                result.tEXt = {};
+              }
+              // eslint-disable-next-line no-case-declarations
+              const textChunk = this.textDecode(chunk.data);
+              result.tEXt[textChunk.keyword] = textChunk.text;
+              break
+            case 'pHYs':
+              result.pHYs = {
+                // Pixels per unit, X axis: 4 bytes (unsigned integer)
+                "x": this.readUint32(chunk.data, 0),
+                // Pixels per unit, Y axis: 4 bytes (unsigned integer)
+                "y": this.readUint32(chunk.data, 4),
+                "unit": chunk.data[8],
+              }
+              break
+            case 'gAMA':
+            case 'cHRM':
+            case 'sRGB':
+            case 'IHDR':
+            case 'iCCP':
+            default:
+              result[chunk.name] = true;
+          }
+        })
+        return result;
+      },
+      extractChunks: function (_data) {
+        // from https://github.com/hughsk/png-chunks-extract
+        const data = new Uint8Array(_data)
+        if (data[0] !== 0x89) throw new Error('Invalid .png file header')
+        if (data[1] !== 0x50) throw new Error('Invalid .png file header')
+        if (data[2] !== 0x4E) throw new Error('Invalid .png file header')
+        if (data[3] !== 0x47) throw new Error('Invalid .png file header')
+        if (data[4] !== 0x0D) throw new Error('Invalid .png file header: possibly caused by DOS-Unix line ending conversion?')
+        if (data[5] !== 0x0A) throw new Error('Invalid .png file header: possibly caused by DOS-Unix line ending conversion?')
+        if (data[6] !== 0x1A) throw new Error('Invalid .png file header')
+        if (data[7] !== 0x0A) throw new Error('Invalid .png file header: possibly caused by DOS-Unix line ending conversion?')
+
+        let ended = false
+        const chunks = []
+        let idx = 8
+
+        const uint8 = new Uint8Array(4)
+        // const int32 = new Int32Array(uint8.buffer)
+        const uint32 = new Uint32Array(uint8.buffer)
+
+        while (idx < data.length) {
+          uint8[3] = data[idx++]
+          uint8[2] = data[idx++]
+          uint8[1] = data[idx++]
+          uint8[0] = data[idx++]
+          const length = uint32[0] + 4
+          const chunk = new Uint8Array(length)
+          chunk[0] = data[idx++]
+          chunk[1] = data[idx++]
+          chunk[2] = data[idx++]
+          chunk[3] = data[idx++]
+          const name = (
+              String.fromCharCode(chunk[0]) +
+              String.fromCharCode(chunk[1]) +
+              String.fromCharCode(chunk[2]) +
+              String.fromCharCode(chunk[3])
+          )
+
+          // The IHDR header MUST come first.
+          if (!chunks.length && name !== 'IHDR') {
+            throw new Error('IHDR header missing')
+          }
+
+          if (name === 'IEND') {
+            ended = true
+            chunks.push({
+              name,
+              data: new Uint8Array(0)
+            })
+
+            break
+          }
+
+          for (let i = 4; i < length; i++) {
+            chunk[i] = data[idx++]
+          }
+
+          uint8[3] = data[idx++]
+          uint8[2] = data[idx++]
+          uint8[1] = data[idx++]
+          uint8[0] = data[idx++]
+
+          const chunkData = new Uint8Array(chunk.buffer.slice(4))
+
+          chunks.push({
+            name,
+            data: chunkData
+          })
+        }
+
+        if (!ended) {
+          throw new Error('.png file ended prematurely: no IEND header was found')
+        }
+
+        return chunks
+      },
+      textDecode: function (data) {
+        if (data.data && data.name) {
+          data = data.data
+        }
+
+        let naming = true
+        let text = ''
+        let name = ''
+
+        for (let i = 0; i < data.length; i++) {
+          const code = data[i]
+
+          if (naming) {
+            if (code) {
+              name += String.fromCharCode(code)
+            } else {
+              naming = false
+            }
+          } else if (code) {
+            text += String.fromCharCode(code)
+          } else {
+            throw new Error('Invalid NULL character found. 0x00 character is not permitted in tEXt content')
+          }
+        }
+
+        return {
+          keyword: name,
+          text
+        }
+      },
+      readUint32: function (uint8array, offset) {
+        const byte1 = uint8array[offset++];
+        const byte2 = uint8array[offset++];
+        const byte3 = uint8array[offset++];
+        const byte4 = uint8array[offset];
+        return 0 | (byte1 << 24) | (byte2 << 16) | (byte3 << 8) | byte4;
+      }
+    }
+  })
+
+</script>
+</body>
+
+</html>
