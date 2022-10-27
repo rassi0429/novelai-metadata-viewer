@@ -183,6 +183,7 @@
         this.preview = URL.createObjectURL(fileArray[0])
         if (metadata.tEXt) {
           this.hasMetadata = true
+          console.log(metadata)
           this.prompts = metadata.tEXt.Description.split(",").map(t => t.trim()).filter(t => t.length !== 0)
           this.rawPrompts = metadata.tEXt.Description
           const _metadata = JSON.parse(metadata.tEXt.Comment)
@@ -215,11 +216,13 @@
         const result = {};
         const chunks = this.extractChunks(buffer);
         chunks.forEach(chunk => {
+          console.log(chunk.name)
           switch (chunk.name) {
             case 'tEXt':
               if (!result.tEXt) {
                 result.tEXt = {};
               }
+              console.log(chunk.data)
               // eslint-disable-next-line no-case-declarations
               const textChunk = this.textDecode(chunk.data);
               result.tEXt[textChunk.keyword] = textChunk.text;
@@ -232,6 +235,13 @@
                 "y": this.readUint32(chunk.data, 4),
                 "unit": chunk.data[8],
               }
+              break
+            case 'iTXt':
+              console.log(chunk)
+              const textDecode = this.textDecode(chunk.data);
+              console.log(textDecode)
+                // ヘッダーのいらない部分を削除
+              result.tEXt[textDecode.keyword] = textDecode.text.replaceAll("\x00", "")
               break
             case 'gAMA':
             case 'cHRM':
@@ -331,17 +341,19 @@
 
         for (let i = 0; i < data.length; i++) {
           const code = data[i]
-
+          console.log(name)
           if (naming) {
             if (code) {
               name += String.fromCharCode(code)
             } else {
               naming = false
             }
-          } else if (code) {
-            text += String.fromCharCode(code)
           } else {
-            throw new Error('Invalid NULL character found. 0x00 character is not permitted in tEXt content')
+            const text_decoder = new TextDecoder("utf-8");
+            const str = text_decoder.decode(Uint8Array.from(data.slice(i)).buffer);
+            console.log(str);
+            text = str
+            break
           }
         }
 
